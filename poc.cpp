@@ -46,7 +46,14 @@ struct params {
   float slide{};
   float delta_slide{};
 };
-constexpr float at(float t, const params &p) noexcept { return p.start_freq; }
+constexpr float at(float t, const params &p) noexcept {
+  // s = s0 + v0t + at2/2
+  auto s0 = p.start_freq;
+  auto v0 = p.slide;
+  auto a = p.delta_slide;
+
+  return s0 + v0 * t + a * t * t / 2.0;
+}
 } // namespace freq
 
 class player : siaudio::timed_streamer {
