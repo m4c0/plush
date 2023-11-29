@@ -1,5 +1,6 @@
 #pragma leco tool
 
+import rng;
 import siaudio;
 import sitime;
 import sith;
@@ -56,26 +57,52 @@ constexpr float at(float t, const params &p) noexcept {
 }
 } // namespace freq
 
+// Notes:
+//
+// Envelope in SFXR is "attack-sustain-decay", while here we have
+// "attack-decay-sustain-release". In a nutshell, they convert as:
+// * attack = attack
+// * decay = sustain
+// * sustain = N/A
+// * release = decay
+//
+namespace sfxr {
+float frnd(float n) noexcept { return rng::randf() * n; }
+float punch2level(float n) noexcept { return 1.0 + 2.0 * n; }
+
+class coin {
+  const adsr::params p{
+      .attack_time = 0.0,
+      .decay_time = frnd(0.1),
+      .sustain_time = 0.0,
+      .sustain_level = punch2level(0.3f + frnd(0.3f)),
+      .release_time = 0.1f + frnd(0.4),
+  };
+  const freq::params fp{
+      .start_freq = 1000.0,
+      .slide = -1.04,
+      .delta_slide = 1.004,
+  };
+
+public:
+  float vol_at(float t) const noexcept {
+    return sinf(t * freq::at(t, fp)) * adsr::vol_at(t, p);
+  }
+};
+} // namespace sfxr
+
 class player : siaudio::timed_streamer {
-  constexpr float vol_at(float t) const noexcept {
-    constexpr const adsr::params p{
-        .attack_time = 0.1,
-        .decay_time = 1.0,
-        .sustain_time = 1.8,
-        .sustain_level = 0.2,
-        .release_time = 1.0,
-    };
-    constexpr const freq::params fp{
-        .start_freq = 1000.0,
-    };
+  const sfxr::coin m_c{};
+  float vol_at(float t) const noexcept {
     constexpr const auto main_vol = 1.0;
-    return sinf(t * freq::at(t, fp)) * main_vol * adsr::vol_at(t, p);
+    return main_vol * m_c.vol_at(t);
   }
 };
 
 void play(auto) {
   player p{};
-  sitime::sleep(5);
+  // TODO: implement min-freq cutoff
+  sitime::sleep(1);
 }
 
 int main() {
