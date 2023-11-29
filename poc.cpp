@@ -8,11 +8,11 @@ extern "C" float sinf(float);
 
 namespace adsr {
 struct params {
-  float attack_time;
-  float decay_time;
-  float sustain_time;
-  float sustain_level;
-  float release_time;
+  float attack_time{};
+  float decay_time{};
+  float sustain_time{};
+  float sustain_level{};
+  float release_time{};
 };
 constexpr float vol_at(float t, const params &p) noexcept {
   if (t < 0)
@@ -42,9 +42,9 @@ constexpr float vol_at(float t, const params &p) noexcept {
 
 namespace freq {
 struct params {
-  float start_freq;
-  float slide;
-  float delta_slide;
+  float start_freq{};
+  float slide{};
+  float delta_slide{};
 };
 constexpr float at(float t, const params &p) noexcept { return p.start_freq; }
 } // namespace freq
