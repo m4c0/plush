@@ -66,7 +66,8 @@ constexpr float at(float t, const params &p) noexcept {
 //
 namespace sfxr {
 float frnd(float n) noexcept { return rng::randf() * n; }
-float punch2level(float n) noexcept { return 1.0 + 2.0 * n; }
+float punch2level(float n) noexcept { return -(1.0 + 2.0 * n); }
+float freq2freq(float n) noexcept { return 8.0f * 44100.0f * (n * n) / 100.0f; }
 
 class coin {
   const adsr::params p{
@@ -77,9 +78,9 @@ class coin {
       .release_time = 0.1f + frnd(0.4),
   };
   const freq::params fp{
-      .start_freq = 1000.0,
-      .slide = -1.04,
-      .delta_slide = 1.004,
+      .start_freq = freq2freq(0.4f + frnd(0.5f)),
+      .slide = 0,
+      .delta_slide = 0,
   };
 
   constexpr float sqr(float t) const noexcept {
