@@ -5,8 +5,6 @@ import siaudio;
 import sitime;
 import sith;
 
-extern "C" float sinf(float);
-
 namespace adsr {
 struct params {
   float attack_time{};
@@ -84,9 +82,14 @@ class coin {
       .delta_slide = 1.004,
   };
 
+  constexpr float sqr(float t) const noexcept {
+    float fr = t - static_cast<int>(t);
+    return fr > 0.5 ? 1.0 : -1.0;
+  }
+
 public:
   float vol_at(float t) const noexcept {
-    return sinf(t * freq::at(t, fp)) * adsr::vol_at(t, p);
+    return sqr(t * freq::at(t, fp)) * adsr::vol_at(t, p);
   }
 };
 } // namespace sfxr
@@ -94,7 +97,7 @@ public:
 class player : siaudio::timed_streamer {
   const sfxr::coin m_c{};
   float vol_at(float t) const noexcept {
-    constexpr const auto main_vol = 1.0;
+    constexpr const auto main_vol = 0.5;
     return main_vol * m_c.vol_at(t);
   }
 };
@@ -106,6 +109,7 @@ void play(auto) {
 }
 
 int main() {
+  rng::seed();
   sith::stateless_thread t{play};
   t.start();
 
