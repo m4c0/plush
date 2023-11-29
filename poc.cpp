@@ -40,6 +40,15 @@ constexpr float vol_at(float t, const params &p) noexcept {
 }
 } // namespace adsr
 
+namespace freq {
+struct params {
+  float start_freq;
+  float slide;
+  float delta_slide;
+};
+constexpr float at(float t, const params &p) noexcept { return p.start_freq; }
+} // namespace freq
+
 class player : siaudio::timed_streamer {
   constexpr float vol_at(float t) const noexcept {
     constexpr const adsr::params p{
@@ -49,11 +58,12 @@ class player : siaudio::timed_streamer {
         .sustain_level = 0.2,
         .release_time = 1.0,
     };
+    constexpr const freq::params fp{
+        .start_freq = 1000.0,
+    };
     constexpr const auto main_vol = 1.0;
-    return sinf(t * 1000.0) * main_vol * adsr::vol_at(t, p);
+    return sinf(t * freq::at(t, fp)) * main_vol * adsr::vol_at(t, p);
   }
-
-public:
 };
 
 void play(auto) {
