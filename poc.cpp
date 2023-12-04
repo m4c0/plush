@@ -55,6 +55,16 @@ constexpr float at(float t, const params &p) noexcept {
 }
 } // namespace freq
 
+namespace arpeggio {
+struct params {
+  float limit;
+  float mod;
+};
+constexpr float at(float t, const params &p) noexcept {
+  return t > p.limit ? p.mod : 1.0;
+}
+} // namespace arpeggio
+
 // Notes:
 //
 // Envelope in SFXR is "attack-sustain-decay", while here we have
@@ -65,9 +75,27 @@ constexpr float at(float t, const params &p) noexcept {
 // * release = decay
 //
 namespace sfxr {
+constexpr const float audio_rate = siaudio::os_streamer::rate;
 float frnd(float n) noexcept { return rng::randf() * n; }
 float punch2level(float n) noexcept { return -(1.0 + 2.0 * n); }
-float freq2freq(float n) noexcept { return 8.0f * 44100.0f * (n * n) / 100.0f; }
+float freq2freq(float n) noexcept {
+  return 8.0f * audio_rate * (n * n) / 100.0f;
+}
+float arp_mod(float n) noexcept {
+  if (n >= 0.0f) {
+    return 1.0 - n * n * 0.9;
+  } else {
+    return 1.0 + n * n * 10.0;
+  }
+}
+float arp_limit(float n) noexcept {
+  if (n == 1.0)
+    return 0.0;
+
+  auto ip = 1.0f - n;
+  auto limit_frame_count = (int)(ip * ip * 20000 + 32);
+  return (float)limit_frame_count / audio_rate;
+}
 
 class coin {
   const adsr::params p{
@@ -82,6 +110,10 @@ class coin {
       .slide = 0,
       .delta_slide = 0,
   };
+  const arpeggio::params ap{
+      .limit = frnd(1) > 0.9 ? 0.0f : arp_limit(0.5f + frnd(0.2f)),
+      .mod = arp_mod(0.2f + frnd(0.4f)),
+  };
 
   constexpr float sqr(float t) const noexcept {
     float fr = t - static_cast<int>(t);
@@ -90,7 +122,9 @@ class coin {
 
 public:
   float vol_at(float t) const noexcept {
-    return sqr(t * freq::at(t, fp)) * adsr::vol_at(t, p);
+    float arp = ap.limit == 0 ? 1.0 : arpeggio::at(t, ap);
+    float tt = t * freq::at(t, fp) / arp;
+    return sqr(tt) * adsr::vol_at(t, p);
   }
 };
 } // namespace sfxr
@@ -98,7 +132,8 @@ public:
 class player : siaudio::timed_streamer {
   const sfxr::coin m_c{};
   float vol_at(float t) const noexcept {
-    constexpr const auto main_vol = 0.5;
+    // master * (2.0 * sound) vols in sfxr
+    constexpr const auto main_vol = 0.05 * 2.0 * 0.5;
     return main_vol * m_c.vol_at(t);
   }
 };
