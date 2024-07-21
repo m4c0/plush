@@ -1,4 +1,5 @@
 #pragma leco tool
+#include "math.h"
 
 import dotz;
 import rng;
@@ -80,11 +81,25 @@ constexpr float at(float t, const params &p) {
 namespace sqr {
 // TODO square duty
 // TODO duty sweep
-constexpr float at(float t) {
+constexpr float vol_at(float t) {
   float fr = t - static_cast<int>(t);
   return fr > 0.5 ? 1.0 : -1.0;
 }
 } // namespace sqr
+
+namespace saw {
+constexpr float vol_at(float t) {
+  float fr = t - static_cast<int>(t);
+  return fr * 2.0f - 1.0f;
+}
+}; // namespace saw
+
+namespace sine {
+constexpr float vol_at(float t) {
+  float fr = t - static_cast<int>(t);
+  return sin(fr * 2.0f * 3.14159265358979323f);
+}
+}; // namespace sine
 
 namespace sfxr {
 // Magic constants that are very specific to sfxr's UI
@@ -137,7 +152,7 @@ class coin {
 public:
   float vol_at(float t) const {
     float tt = t * freq::at(t, fp) / arpeggio::at(t, ap);
-    return sqr::at(tt) * adsr::vol_at(t, p);
+    return sqr::vol_at(tt) * adsr::vol_at(t, p);
   }
 };
 
