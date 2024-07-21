@@ -64,12 +64,14 @@ constexpr float at(float t, const params &p) {
 } // namespace freq
 
 namespace arpeggio {
+static constexpr const float null = 1e38;
+
 struct params {
   float limit; // "change speed"
   float mod;   // "change amount"
 };
 constexpr float at(float t, const params &p) {
-  return p.limit == 0 ? 1.0 : t > p.limit ? p.mod : 1.0;
+  return t > p.limit ? p.mod : 1.0;
 }
 } // namespace arpeggio
 
@@ -102,7 +104,7 @@ float arp_mod(float n) {
 }
 float arp_limit(float n) {
   if (n == 1.0)
-    return 0.0;
+    return arpeggio::null;
 
   auto ip = 1.0f - n;
   auto limit_frame_count = (int)(ip * ip * 20000 + 32);
@@ -123,14 +125,13 @@ class coin {
       .delta_slide = 0,
   };
   arpeggio::params ap{
-      .limit = frnd(1) > 0.9 ? 0.0f : arp_limit(0.5f + frnd(0.2f)),
+      .limit = frnd(1) > 0.9 ? arpeggio::null : arp_limit(0.5f + frnd(0.2f)),
       .mod = arp_mod(0.2f + frnd(0.4f)),
   };
 
 public:
   float vol_at(float t) const {
-    float arp = ap.limit == 0 ? 1.0 : arpeggio::at(t, ap);
-    float tt = t * freq::at(t, fp) / arp;
+    float tt = t * freq::at(t, fp) / arpeggio::at(t, ap);
     return sqr::at(tt) * adsr::vol_at(t, p);
   }
 };
