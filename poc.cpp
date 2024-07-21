@@ -71,8 +71,8 @@ namespace arpeggio {
 static constexpr const float null = 1e38;
 
 struct params {
-  float limit; // "change speed"
-  float mod;   // "change amount"
+  float limit{null}; // "change speed"
+  float mod{};       // "change amount"
 };
 constexpr float at(float t, const params &p) {
   return t > p.limit ? p.mod : 1.0;
