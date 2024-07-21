@@ -183,21 +183,39 @@ class laser {
   };
   freq::params fp = frnd(1) > 0.33 ? freq_0() : freq_1();
 
-  // TODO: wave type
+  int wave_type = rng::rand(3);
+
+  auto wave(float t) const {
+    switch (wave_type) {
+    case 0:
+      return sine::vol_at(t);
+    case 1:
+      return saw::vol_at(t);
+    default:
+      return sqr::vol_at(t);
+    }
+  }
+
   // TODO: square duty
   // TODO: phase
   // TODO: hpf
+public:
+  float vol_at(float t) const {
+    float tt = t * freq::at(t, fp);
+    return wave(tt) * adsr::vol_at(t, p);
+  }
 };
 } // namespace sfxr
 
-static sfxr::coin coin{};
+// static sfxr::coin fx{};
+static sfxr::laser fx{};
 
 volatile unsigned g_idx{};
 void fill_buffer(float *buf, unsigned len) {
   auto idx = g_idx;
   for (auto i = 0; i < len; ++i, ++idx) {
     auto t = static_cast<float>(idx) / sfxr::audio_rate;
-    *buf++ = sfxr::main_volume * coin.vol_at(t);
+    *buf++ = sfxr::main_volume * fx.vol_at(t);
   }
   g_idx = idx;
 }
@@ -206,7 +224,7 @@ int main() {
   // TODO: implement min-freq cutoff
 
   rng::seed();
-  coin = sfxr::coin{};
+  fx = {};
 
   siaudio::filler(fill_buffer);
   siaudio::rate(sfxr::audio_rate);
