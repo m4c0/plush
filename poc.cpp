@@ -3,7 +3,6 @@
 import rng;
 import siaudio;
 import sitime;
-import sith;
 
 namespace adsr {
 struct params {
@@ -13,7 +12,7 @@ struct params {
   float sustain_level{};
   float release_time{};
 };
-constexpr float vol_at(float t, const params &p) noexcept {
+constexpr float vol_at(float t, const params &p) {
   if (t < 0)
     return 0;
   if (t < p.attack_time)
@@ -45,7 +44,7 @@ struct params {
   float slide{};
   float delta_slide{};
 };
-constexpr float at(float t, const params &p) noexcept {
+constexpr float at(float t, const params &p) {
   // s = s0 + v0t + at2/2
   auto s0 = p.start_freq;
   auto v0 = p.slide;
@@ -60,7 +59,7 @@ struct params {
   float limit;
   float mod;
 };
-constexpr float at(float t, const params &p) noexcept {
+constexpr float at(float t, const params &p) {
   return t > p.limit ? p.mod : 1.0;
 }
 } // namespace arpeggio
@@ -75,20 +74,18 @@ constexpr float at(float t, const params &p) noexcept {
 // * release = decay
 //
 namespace sfxr {
-constexpr const float audio_rate = siaudio::os_streamer::rate;
-float frnd(float n) noexcept { return rng::randf() * n; }
-float punch2level(float n) noexcept { return -(1.0 + 2.0 * n); }
-float freq2freq(float n) noexcept {
-  return 8.0f * audio_rate * (n * n) / 100.0f;
-}
-float arp_mod(float n) noexcept {
+constexpr const float audio_rate = 44100;
+float frnd(float n) { return rng::randf() * n; }
+float punch2level(float n) { return -(1.0 + 2.0 * n); }
+float freq2freq(float n) { return 8.0f * audio_rate * (n * n) / 100.0f; }
+float arp_mod(float n) {
   if (n >= 0.0f) {
     return 1.0 - n * n * 0.9;
   } else {
     return 1.0 + n * n * 10.0;
   }
 }
-float arp_limit(float n) noexcept {
+float arp_limit(float n) {
   if (n == 1.0)
     return 0.0;
 
@@ -115,13 +112,13 @@ class coin {
       .mod = arp_mod(0.2f + frnd(0.4f)),
   };
 
-  constexpr float sqr(float t) const noexcept {
+  constexpr float sqr(float t) const {
     float fr = t - static_cast<int>(t);
     return fr > 0.5 ? 1.0 : -1.0;
   }
 
 public:
-  float vol_at(float t) const noexcept {
+  float vol_at(float t) const {
     float arp = ap.limit == 0 ? 1.0 : arpeggio::at(t, ap);
     float tt = t * freq::at(t, fp) / arp;
     return sqr(tt) * adsr::vol_at(t, p);
@@ -129,25 +126,30 @@ public:
 };
 } // namespace sfxr
 
-class player : siaudio::timed_streamer {
-  const sfxr::coin m_c{};
-  float vol_at(float t) const noexcept {
-    // master * (2.0 * sound) vols in sfxr
-    constexpr const auto main_vol = 0.05 * 2.0 * 0.5;
-    return main_vol * m_c.vol_at(t);
-  }
-};
+const sfxr::coin coin{};
+float vol_at(float t) {
+  // master * (2.0 * sound) vols in sfxr
+  constexpr const auto main_vol = 0.05 * 2.0 * 0.5;
+  return main_vol * coin.vol_at(t);
+}
 
-void play(auto) {
-  player p{};
-  // TODO: implement min-freq cutoff
-  sitime::sleep(1);
+volatile unsigned g_idx{};
+void fill_buffer(float *buf, unsigned len) {
+  auto idx = g_idx;
+  for (auto i = 0; i < len; ++i, ++idx) {
+    auto t = static_cast<float>(idx) / sfxr::audio_rate;
+    *buf++ = vol_at(t);
+  }
+  g_idx = idx;
 }
 
 int main() {
+  // TODO: implement min-freq cutoff
+
   rng::seed();
-  sith::stateless_thread t{play};
-  t.start();
+
+  siaudio::filler(fill_buffer);
+  siaudio::rate(sfxr::audio_rate);
 
   sitime::sleep(1);
 }
