@@ -16,6 +16,8 @@ namespace adsr {
 // * sustain = N/A
 // * release = decay
 //
+// In SFXR, the sustein stage is an upward volume from 1 to (1 + 2 * punch), so
+// we need a sustain_level greater than one to simulate the same audio level
 struct params {
   float attack_time{};
   float decay_time{};
@@ -96,11 +98,21 @@ constexpr float vol_at(float t) {
 }; // namespace saw
 
 namespace sine {
-constexpr float vol_at(float t) {
+float vol_at(float t) {
   float fr = t - static_cast<int>(t);
   return sin(fr * 2.0f * 3.14159265358979323f);
 }
 }; // namespace sine
+
+struct params {
+  adsr::params p{};
+  freq::params fp{};
+  arpeggio::params ap{};
+};
+float vol_at(float t, const params &p, const auto &wave_fn) {
+  float tt = t * freq::at(t, p.fp) / arpeggio::at(t, p.ap);
+  return wave_fn(tt) * adsr::vol_at(t, p.p);
+}
 
 namespace sfxr {
 // Magic constants that are very specific to sfxr's UI
@@ -112,7 +124,7 @@ constexpr const float subsmp_rate = 8.0 * audio_rate;
 constexpr const auto main_volume = 0.05 * 2.0 * 0.5;
 
 float frnd(float n) { return rng::randf() * n; }
-float punch2level(float n) { return -(1.0 + 2.0 * n); }
+float punch2level(float n) { return 1.0 + 2.0 * n; }
 float freq2freq(float n) { return subsmp_rate * (n * n) / 100.0f; }
 float ramp2slide(float n) { return subsmp_rate / (1 - (n * n * n) * 0.01f); }
 float dramp2dslide(float n) { return subsmp_rate / (-(n * n * n) * 0.000001f); }
@@ -131,100 +143,41 @@ float arp_limit(float n) {
   auto limit_frame_count = (int)(ip * ip * 20000 + 32);
   return (float)limit_frame_count / audio_rate;
 }
-
-class coin {
-  adsr::params p{
-      .attack_time = 0.0,
-      .decay_time = frnd(0.1),
-      .sustain_time = 0.0,
-      .sustain_level = punch2level(0.3f + frnd(0.3f)),
-      .release_time = 0.1f + frnd(0.4),
-  };
-  freq::params fp{
-      .start_freq = freq2freq(0.4f + frnd(0.5f)),
-      .slide = 0,
-      .delta_slide = 0,
-  };
-  arpeggio::params ap{
-      .limit = frnd(1) > 0.9 ? arpeggio::null : arp_limit(0.5f + frnd(0.2f)),
-      .mod = arp_mod(0.2f + frnd(0.4f)),
-  };
-
-public:
-  float vol_at(float t) const {
-    float tt = t * freq::at(t, fp) / arpeggio::at(t, ap);
-    return sqr::vol_at(tt) * adsr::vol_at(t, p);
-  }
-};
-
-class laser {
-  static freq::params freq_0() {
-    float base_freq = 0.5f + frnd(0.5f);
-    return {
-        .start_freq = freq2freq(base_freq),
-        .min_freq = freq2freq(dotz::min(0.2f, base_freq - 0.2f - frnd(0.6f))),
-        .slide = ramp2slide(-0.15f - frnd(0.2f)),
-    };
-  }
-  static freq::params freq_1() {
-    return {
-        .start_freq = freq2freq(0.3f + frnd(0.6f)),
-        .min_freq = freq2freq(0.1f),
-        .slide = ramp2slide(-0.35f - frnd(0.3f)),
-    };
-  }
-
-  adsr::params p{
-      .attack_time = 0.0,
-      .decay_time = 0.1f + frnd(0.2f),
-      .sustain_time = 0.0,
-      .sustain_level = frnd(1) > 0.5 ? 0.0f : punch2level(0.3f),
-      .release_time = frnd(0.4),
-  };
-  freq::params fp = frnd(1) > 0.33 ? freq_0() : freq_1();
-
-  int wave_type = rng::rand(3);
-
-  auto wave(float t) const {
-    switch (wave_type) {
-    case 0:
-      return sine::vol_at(t);
-    case 1:
-      return saw::vol_at(t);
-    default:
-      return sqr::vol_at(t);
-    }
-  }
-
-  // TODO: square duty
-  // TODO: phase
-  // TODO: hpf
-public:
-  float vol_at(float t) const {
-    float tt = t * freq::at(t, fp);
-    return wave(tt) * adsr::vol_at(t, p);
-  }
-};
 } // namespace sfxr
 
-// static sfxr::coin fx{};
-static sfxr::laser fx{};
+const params g_p{
+    .p{
+        .attack_time{},
+        .decay_time = 0.1,
+        .sustain_time{},
+        .sustain_level = sfxr::punch2level(0.6),
+        .release_time = 0.4,
+    },
+    .fp{
+        .start_freq = sfxr::freq2freq(0.5),
+        .min_freq{},
+        .slide{},
+        .delta_slide{},
+    },
+    .ap{
+        .limit = sfxr::arp_limit(0.5),
+        .mod = sfxr::arp_mod(0.5),
+    },
+};
+const auto wave_fn = sqr::vol_at;
 
 volatile unsigned g_idx{};
 void fill_buffer(float *buf, unsigned len) {
   auto idx = g_idx;
   for (auto i = 0; i < len; ++i, ++idx) {
     auto t = static_cast<float>(idx) / sfxr::audio_rate;
-    *buf++ = sfxr::main_volume * fx.vol_at(t);
+    *buf++ = sfxr::main_volume * vol_at(t, g_p, wave_fn);
   }
   g_idx = idx;
 }
 
 int main() {
-  // TODO: implement min-freq cutoff
-
   rng::seed();
-  fx = {};
 
   siaudio::filler(fill_buffer);
   siaudio::rate(sfxr::audio_rate);
