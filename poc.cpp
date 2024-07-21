@@ -69,7 +69,7 @@ struct params {
   float mod;   // "change amount"
 };
 constexpr float at(float t, const params &p) {
-  return t > p.limit ? p.mod : 1.0;
+  return p.limit == 0 ? 1.0 : t > p.limit ? p.mod : 1.0;
 }
 } // namespace arpeggio
 
@@ -83,7 +83,13 @@ constexpr float at(float t) {
 } // namespace sqr
 
 namespace sfxr {
+// Magic constants that are very specific to sfxr's UI
+
 constexpr const float audio_rate = 44100;
+
+// master * (2.0 * sound) vols in sfxr
+constexpr const auto main_volume = 0.05 * 2.0 * 0.5;
+
 float frnd(float n) { return rng::randf() * n; }
 float punch2level(float n) { return -(1.0 + 2.0 * n); }
 float freq2freq(float n) { return 8.0f * audio_rate * (n * n) / 100.0f; }
@@ -131,18 +137,13 @@ public:
 } // namespace sfxr
 
 static sfxr::coin coin{};
-float vol_at(float t) {
-  // master * (2.0 * sound) vols in sfxr
-  constexpr const auto main_vol = 0.05 * 2.0 * 0.5;
-  return main_vol * coin.vol_at(t);
-}
 
 volatile unsigned g_idx{};
 void fill_buffer(float *buf, unsigned len) {
   auto idx = g_idx;
   for (auto i = 0; i < len; ++i, ++idx) {
     auto t = static_cast<float>(idx) / sfxr::audio_rate;
-    *buf++ = vol_at(t);
+    *buf++ = sfxr::main_volume * coin.vol_at(t);
   }
   g_idx = idx;
 }
