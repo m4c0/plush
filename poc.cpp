@@ -6,6 +6,8 @@ import rng;
 import siaudio;
 import sitime;
 
+// TODO: 8x super sampling - our version sounds choppy
+
 namespace adsr {
 // Notes:
 //
@@ -124,6 +126,10 @@ constexpr const float subsmp_rate = 8.0 * audio_rate;
 constexpr const auto main_volume = 0.05 * 2.0 * 0.5;
 
 float frnd(float n) { return rng::randf() * n; }
+
+// These translates the slider value in SFXR (either [0;1] or [-1;1]) to numbers
+// we can use
+float time2time(float n) { return n * n * 100000.0f / audio_rate; }
 float punch2level(float n) { return 1.0 + 2.0 * n; }
 float freq2freq(float n) { return subsmp_rate * (n * n) / 100.0f; }
 float ramp2slide(float n) { return subsmp_rate / (1 - (n * n * n) * 0.01f); }
@@ -148,10 +154,10 @@ float arp_limit(float n) {
 const params g_p{
     .p{
         .attack_time{},
-        .decay_time = 0.1,
+        .decay_time = sfxr::time2time(0.1),
         .sustain_time{},
         .sustain_level = sfxr::punch2level(0.6),
-        .release_time = 0.4,
+        .release_time = sfxr::time2time(0.4),
     },
     .fp{
         .start_freq = sfxr::freq2freq(0.5),
