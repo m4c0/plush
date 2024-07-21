@@ -62,7 +62,8 @@ constexpr float at(float t, const params &p) {
   auto v0 = p.slide;
   auto a = p.delta_slide;
 
-  return s0 + v0 * t + a * t * t / 2.0;
+  auto f = s0 + v0 * t + a * t * t / 2.0;
+  return f > p.min_freq ? f : 0.0;
 }
 } // namespace freq
 
