@@ -95,19 +95,19 @@ float arp_limit(float n) {
 }
 
 class coin {
-  const adsr::params p{
+  adsr::params p{
       .attack_time = 0.0,
       .decay_time = frnd(0.1),
       .sustain_time = 0.0,
       .sustain_level = punch2level(0.3f + frnd(0.3f)),
       .release_time = 0.1f + frnd(0.4),
   };
-  const freq::params fp{
+  freq::params fp{
       .start_freq = freq2freq(0.4f + frnd(0.5f)),
       .slide = 0,
       .delta_slide = 0,
   };
-  const arpeggio::params ap{
+  arpeggio::params ap{
       .limit = frnd(1) > 0.9 ? 0.0f : arp_limit(0.5f + frnd(0.2f)),
       .mod = arp_mod(0.2f + frnd(0.4f)),
   };
@@ -126,7 +126,7 @@ public:
 };
 } // namespace sfxr
 
-const sfxr::coin coin{};
+static sfxr::coin coin{};
 float vol_at(float t) {
   // master * (2.0 * sound) vols in sfxr
   constexpr const auto main_vol = 0.05 * 2.0 * 0.5;
@@ -147,6 +147,7 @@ int main() {
   // TODO: implement min-freq cutoff
 
   rng::seed();
+  coin = sfxr::coin{};
 
   siaudio::filler(fill_buffer);
   siaudio::rate(sfxr::audio_rate);
