@@ -5,6 +5,15 @@ import siaudio;
 import sitime;
 
 namespace adsr {
+// Notes:
+//
+// Envelope in SFXR is "attack-sustain-decay", while here we have
+// "attack-decay-sustain-release". In a nutshell, they convert as:
+// * attack = attack
+// * decay = sustain
+// * sustain = N/A
+// * release = decay
+//
 struct params {
   float attack_time{};
   float decay_time{};
@@ -56,23 +65,23 @@ constexpr float at(float t, const params &p) {
 
 namespace arpeggio {
 struct params {
-  float limit;
-  float mod;
+  float limit; // "change speed"
+  float mod;   // "change amount"
 };
 constexpr float at(float t, const params &p) {
   return t > p.limit ? p.mod : 1.0;
 }
 } // namespace arpeggio
 
-// Notes:
-//
-// Envelope in SFXR is "attack-sustain-decay", while here we have
-// "attack-decay-sustain-release". In a nutshell, they convert as:
-// * attack = attack
-// * decay = sustain
-// * sustain = N/A
-// * release = decay
-//
+namespace sqr {
+// TODO square duty
+// TODO duty sweep
+constexpr float at(float t) {
+  float fr = t - static_cast<int>(t);
+  return fr > 0.5 ? 1.0 : -1.0;
+}
+} // namespace sqr
+
 namespace sfxr {
 constexpr const float audio_rate = 44100;
 float frnd(float n) { return rng::randf() * n; }
@@ -112,16 +121,11 @@ class coin {
       .mod = arp_mod(0.2f + frnd(0.4f)),
   };
 
-  constexpr float sqr(float t) const {
-    float fr = t - static_cast<int>(t);
-    return fr > 0.5 ? 1.0 : -1.0;
-  }
-
 public:
   float vol_at(float t) const {
     float arp = ap.limit == 0 ? 1.0 : arpeggio::at(t, ap);
     float tt = t * freq::at(t, fp) / arp;
-    return sqr(tt) * adsr::vol_at(t, p);
+    return sqr::at(tt) * adsr::vol_at(t, p);
   }
 };
 } // namespace sfxr
