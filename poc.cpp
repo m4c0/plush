@@ -1,5 +1,6 @@
 #pragma leco tool
 
+import dotz;
 import rng;
 import siaudio;
 import sitime;
@@ -50,6 +51,7 @@ constexpr float vol_at(float t, const params &p) {
 namespace freq {
 struct params {
   float start_freq{};
+  float min_freq{};
   float slide{};
   float delta_slide{};
 };
@@ -88,13 +90,16 @@ namespace sfxr {
 // Magic constants that are very specific to sfxr's UI
 
 constexpr const float audio_rate = 44100;
+constexpr const float subsmp_rate = 8.0 * audio_rate;
 
 // master * (2.0 * sound) vols in sfxr
 constexpr const auto main_volume = 0.05 * 2.0 * 0.5;
 
 float frnd(float n) { return rng::randf() * n; }
 float punch2level(float n) { return -(1.0 + 2.0 * n); }
-float freq2freq(float n) { return 8.0f * audio_rate * (n * n) / 100.0f; }
+float freq2freq(float n) { return subsmp_rate * (n * n) / 100.0f; }
+float ramp2slide(float n) { return subsmp_rate / (1 - (n * n * n) * 0.01f); }
+float dramp2dslide(float n) { return subsmp_rate / (-(n * n * n) * 0.000001f); }
 float arp_mod(float n) {
   if (n >= 0.0f) {
     return 1.0 - n * n * 0.9;
@@ -134,6 +139,38 @@ public:
     float tt = t * freq::at(t, fp) / arpeggio::at(t, ap);
     return sqr::at(tt) * adsr::vol_at(t, p);
   }
+};
+
+class laser {
+  static freq::params freq_0() {
+    float base_freq = 0.5f + frnd(0.5f);
+    return {
+        .start_freq = freq2freq(base_freq),
+        .min_freq = freq2freq(dotz::min(0.2f, base_freq - 0.2f - frnd(0.6f))),
+        .slide = ramp2slide(-0.15f - frnd(0.2f)),
+    };
+  }
+  static freq::params freq_1() {
+    return {
+        .start_freq = freq2freq(0.3f + frnd(0.6f)),
+        .min_freq = freq2freq(0.1f),
+        .slide = ramp2slide(-0.35f - frnd(0.3f)),
+    };
+  }
+
+  adsr::params p{
+      .attack_time = 0.0,
+      .decay_time = 0.1f + frnd(0.2f),
+      .sustain_time = 0.0,
+      .sustain_level = frnd(1) > 0.5 ? 0.0f : punch2level(0.3f),
+      .release_time = frnd(0.4),
+  };
+  freq::params fp = frnd(1) > 0.33 ? freq_0() : freq_1();
+
+  // TODO: wave type
+  // TODO: square duty
+  // TODO: phase
+  // TODO: hpf
 };
 } // namespace sfxr
 
