@@ -14,7 +14,7 @@ int main() {
           .release_time = 0.3,
       },
       .freq{
-          .start_freq = 440000,
+          .start_freq = 440,
           .min_freq{},
           .slide{},
           .delta_slide{},
