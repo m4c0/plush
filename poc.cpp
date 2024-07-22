@@ -18,6 +18,9 @@ namespace adsr {
 // * sustain = N/A
 // * release = decay
 //
+// Some magic also happens for frequency, because SFXR translates everything
+// into "period" - instead of using "frequency", then uses 8x super-sampling.
+//
 // In SFXR, the sustein stage is an upward volume from 1 to (1 + 2 * punch), so
 // we need a sustain_level greater than one to simulate the same audio level
 struct params {
