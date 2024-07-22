@@ -39,6 +39,8 @@ float arp_limit(float n) {
   auto limit_frame_count = (int)(ip * ip * 20000 + 32);
   return (float)limit_frame_count / audio_rate;
 }
+float vib_speed(float n) { return 0.01f * n * n * audio_rate; }
+float vib_depth(float n) { return 0.5f * n; }
 } // namespace sfxr
 
 int main() {
@@ -59,6 +61,10 @@ int main() {
       .arp{
           .limit = sfxr::arp_limit(0.5),
           .mod = sfxr::arp_mod(0.5),
+      },
+      .vib{
+          .depth = sfxr::vib_depth(0.5),
+          .speed = sfxr::vib_speed(0.5),
       },
       .main_volume = sfxr::main_volume,
   };

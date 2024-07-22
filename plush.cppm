@@ -52,10 +52,7 @@ constexpr float vol_at(float t, const params &p) {
 } // namespace plush::adsr
 
 export namespace plush::freq {
-// Notes:
-//
-// Some magic also happens here. SFXR translated frequency into "period" before
-// applying its 8x super-sampling.
+// SFXR's "min frequency" cuts the audio off, not respecting the envelope.
 struct params {
   float start_freq{};
   float min_freq{};
@@ -69,6 +66,7 @@ constexpr float at(float t, const params &p) {
   auto a = p.delta_slide;
 
   auto f = s0 + v0 * t + a * t * t / 2.0;
+  // TODO: keep SFXR behaviour or change this to min(f, min_freq)?
   return f > p.min_freq ? f : 0.0;
 }
 } // namespace plush::freq
@@ -84,6 +82,16 @@ constexpr float at(float t, const params &p) {
   return t > p.limit ? p.mod : 1.0;
 }
 } // namespace plush::arpeggio
+
+export namespace plush::vibrato {
+struct params {
+  float depth{};
+  float speed{};
+};
+constexpr float at(float t, const params &p) {
+  return t * (1.0 + p.depth * sin(p.speed * t));
+}
+} // namespace plush::vibrato
 
 export namespace plush::sqr {
 // TODO square duty
@@ -124,6 +132,7 @@ export struct params {
   adsr::params adsr{};
   freq::params freq{};
   arpeggio::params arp{};
+  vibrato::params vib{};
 
   unsigned audio_rate{44100};
   float main_volume{1.0};
@@ -134,6 +143,7 @@ export struct params {
 };
 float vol_at(float t, const params &p) {
   float tt = t * freq::at(t, p.freq) / arpeggio::at(t, p.arp);
+  tt = vibrato::at(tt, p.vib);
   return p.wave_fn(tt) * adsr::vol_at(t, p.adsr);
 }
 
