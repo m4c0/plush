@@ -1,5 +1,4 @@
 #pragma leco tool
-#include "math.h"
 
 import dotz;
 import hai;
@@ -7,39 +6,6 @@ import plush;
 import rng;
 import siaudio;
 import sitime;
-
-namespace sqr {
-// TODO square duty
-// TODO duty sweep
-constexpr float vol_at(float t) {
-  float fr = t - static_cast<int>(t);
-  return fr > 0.5 ? 1.0 : -1.0;
-}
-} // namespace sqr
-
-namespace saw {
-constexpr float vol_at(float t) {
-  float fr = t - static_cast<int>(t);
-  return fr * 2.0f - 1.0f;
-}
-}; // namespace saw
-
-namespace sine {
-float vol_at(float t) {
-  float fr = t - static_cast<int>(t);
-  return sin(fr * 2.0f * 3.14159265358979323f);
-}
-}; // namespace sine
-
-namespace noise {
-float vol_at(float t) {
-  // This was arbitrarily defined to make a noise sound at the same level as
-  // another wave form with the same parameters. Somehow there was a higher
-  // "punch" in SFXR's noise
-  static constexpr const auto magic_noise_volume = 5.0f;
-  return (rng::rand(64) - 32.0f) / magic_noise_volume;
-}
-}; // namespace noise
 
 namespace sfxr {
 // Magic constants that are very specific to sfxr's UI
@@ -123,15 +89,15 @@ int main() {
   siaudio::filler(fill_buffer);
   siaudio::rate(sfxr::audio_rate);
 
-  p.wave_fn = sqr::vol_at;
+  p.wave_fn = plush::sqr::vol_at;
   g_p.reset(new plush::params{p});
   sitime::sleep(1);
 
-  p.wave_fn = noise::vol_at;
+  p.wave_fn = plush::noise::vol_at;
   g_p.reset(new plush::params{p});
   sitime::sleep(1);
 
-  p.wave_fn = sine::vol_at;
+  p.wave_fn = plush::sine::vol_at;
   g_p.reset(new plush::params{p});
   sitime::sleep(1);
 }

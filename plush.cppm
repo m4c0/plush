@@ -1,4 +1,8 @@
+module;
+#include "math.h"
+
 export module plush;
+import rng;
 
 export namespace plush::adsr {
 // Notes:
@@ -78,6 +82,39 @@ constexpr float at(float t, const params &p) {
   return t > p.limit ? p.mod : 1.0;
 }
 } // namespace plush::arpeggio
+
+export namespace plush::sqr {
+// TODO square duty
+// TODO duty sweep
+constexpr float vol_at(float t) {
+  float fr = t - static_cast<int>(t);
+  return fr > 0.5 ? 1.0 : -1.0;
+}
+} // namespace plush::sqr
+
+export namespace plush::saw {
+constexpr float vol_at(float t) {
+  float fr = t - static_cast<int>(t);
+  return fr * 2.0f - 1.0f;
+}
+}; // namespace plush::saw
+
+export namespace plush::sine {
+float vol_at(float t) {
+  float fr = t - static_cast<int>(t);
+  return sin(fr * 2.0f * 3.14159265358979323f);
+}
+}; // namespace plush::sine
+
+export namespace plush::noise {
+float vol_at(float t) {
+  // This was arbitrarily defined to make a noise sound at the same level as
+  // another wave form with the same parameters. Somehow there was a higher
+  // "punch" in SFXR's noise
+  static constexpr const auto magic_noise_volume = 5.0f;
+  return (rng::rand(64) - 32.0f) / magic_noise_volume;
+}
+}; // namespace plush::noise
 
 export namespace plush {
 struct params {
