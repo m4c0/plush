@@ -182,7 +182,7 @@ const params g_p{
         .mod = sfxr::arp_mod(0.5),
     },
 };
-float (*wave_fn)(float);
+float (*wave_fn)(float) = [](float) { return 0.0f; };
 volatile unsigned sample_index{};
 
 void fill_buffer(float *buf, unsigned len) {
@@ -206,11 +206,10 @@ void fill_buffer(float *buf, unsigned len) {
 int main() {
   rng::seed();
 
-  wave_fn = sqr::vol_at;
-
   siaudio::filler(fill_buffer);
   siaudio::rate(sfxr::audio_rate);
 
+  wave_fn = sqr::vol_at;
   sitime::sleep(1);
 
   wave_fn = noise::vol_at;
