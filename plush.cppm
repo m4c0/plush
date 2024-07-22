@@ -122,6 +122,8 @@ struct params {
   freq::params freq{};
   arpeggio::params arp{};
 
+  float main_volume{1.0};
+
   float (*wave_fn)(float) = [](float) { return 0.0f; };
 
   unsigned sample_index{};

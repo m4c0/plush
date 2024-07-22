@@ -58,7 +58,7 @@ void fill_buffer(float *buf, unsigned len) {
       auto t = static_cast<float>(idx) / subsample_rate;
       smp += plush::vol_at(t, *g_p);
     }
-    *buf++ = sfxr::main_volume * smp / static_cast<float>(subsample_count);
+    *buf++ = g_p->main_volume * smp / static_cast<float>(subsample_count);
   }
   g_p->sample_index = idx / subsample_count;
 }
@@ -82,6 +82,7 @@ int main() {
           .limit = sfxr::arp_limit(0.5),
           .mod = sfxr::arp_mod(0.5),
       },
+      .main_volume = sfxr::main_volume,
   };
 
   rng::seed();
