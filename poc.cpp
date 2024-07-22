@@ -108,6 +108,16 @@ float vol_at(float t) {
 }
 }; // namespace sine
 
+namespace noise {
+float vol_at(float t) {
+  // This was arbitrarily defined to make a noise sound at the same level as
+  // another wave form with the same parameters. Somehow there was a higher
+  // "punch" in SFXR's noise
+  static constexpr const auto magic_noise_volume = 5.0f;
+  return (rng::rand(64) - 32.0f) / magic_noise_volume;
+}
+}; // namespace noise
+
 struct params {
   adsr::params p{};
   freq::params fp{};
