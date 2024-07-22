@@ -182,16 +182,16 @@ const params g_p{
         .mod = sfxr::arp_mod(0.5),
     },
 };
-const auto wave_fn = sqr::vol_at;
+float (*wave_fn)(float);
+volatile unsigned sample_index{};
 
-volatile unsigned g_idx{};
 void fill_buffer(float *buf, unsigned len) {
   static constexpr const auto subsample_count = 8;
   static constexpr const auto subsample_rate =
       subsample_count * sfxr::audio_rate;
 
   // Using a 8x subsampling generates more pleasing sounds
-  auto idx = g_idx * subsample_count;
+  auto idx = sample_index * subsample_count;
   for (auto i = 0; i < len; ++i) {
     float smp{};
     for (auto is = 0; is < subsample_count; is++, idx++) {
@@ -200,14 +200,24 @@ void fill_buffer(float *buf, unsigned len) {
     }
     *buf++ = sfxr::main_volume * smp / static_cast<float>(subsample_count);
   }
-  g_idx = idx / subsample_count;
+  sample_index = idx / subsample_count;
 }
 
 int main() {
   rng::seed();
 
+  wave_fn = sqr::vol_at;
+
   siaudio::filler(fill_buffer);
   siaudio::rate(sfxr::audio_rate);
 
+  sitime::sleep(1);
+
+  wave_fn = noise::vol_at;
+  sample_index = 0;
+  sitime::sleep(1);
+
+  wave_fn = sine::vol_at;
+  sample_index = 0;
   sitime::sleep(1);
 }
