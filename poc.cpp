@@ -177,12 +177,20 @@ const auto wave_fn = sqr::vol_at;
 
 volatile unsigned g_idx{};
 void fill_buffer(float *buf, unsigned len) {
-  auto idx = g_idx;
-  for (auto i = 0; i < len; ++i, ++idx) {
-    auto t = static_cast<float>(idx) / sfxr::audio_rate;
-    *buf++ = sfxr::main_volume * vol_at(t, g_p, wave_fn);
+  static constexpr const auto subsample_count = 8;
+  static constexpr const auto subsample_rate =
+      subsample_count * sfxr::audio_rate;
+
+  auto idx = g_idx * subsample_count;
+  for (auto i = 0; i < len; ++i) {
+    float smp{};
+    for (auto is = 0; is < subsample_count; is++, idx++) {
+      auto t = static_cast<float>(idx) / subsample_rate;
+      smp += vol_at(t, g_p, wave_fn);
+    }
+    *buf++ = sfxr::main_volume * smp / static_cast<float>(subsample_count);
   }
-  g_idx = idx;
+  g_idx = idx / subsample_count;
 }
 
 int main() {
