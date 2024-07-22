@@ -6,8 +6,6 @@ import rng;
 import siaudio;
 import sitime;
 
-// TODO: 8x super sampling - our version sounds choppy
-
 namespace adsr {
 // Notes:
 //
@@ -18,10 +16,7 @@ namespace adsr {
 // * sustain = N/A
 // * release = decay
 //
-// Some magic also happens for frequency, because SFXR translates everything
-// into "period" - instead of using "frequency", then uses 8x super-sampling.
-//
-// In SFXR, the sustein stage is an upward volume from 1 to (1 + 2 * punch), so
+// In SFXR, the sustain stage is an upward volume from 1 to (1 + 2 * punch), so
 // we need a sustain_level greater than one to simulate the same audio level
 struct params {
   float attack_time{};
@@ -57,6 +52,10 @@ constexpr float vol_at(float t, const params &p) {
 } // namespace adsr
 
 namespace freq {
+// Notes:
+//
+// Some magic also happens here. SFXR translated frequency into "period" before
+// applying its 8x super-sampling.
 struct params {
   float start_freq{};
   float min_freq{};
@@ -181,6 +180,7 @@ void fill_buffer(float *buf, unsigned len) {
   static constexpr const auto subsample_rate =
       subsample_count * sfxr::audio_rate;
 
+  // Using a 8x subsampling generates more pleasing sounds
   auto idx = g_idx * subsample_count;
   for (auto i = 0; i < len; ++i) {
     float smp{};
