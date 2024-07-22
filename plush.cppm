@@ -2,7 +2,9 @@ module;
 #include "math.h"
 
 export module plush;
+import hai;
 import rng;
+import siaudio;
 
 export namespace plush::adsr {
 // Notes:
@@ -106,6 +108,7 @@ float vol_at(float t) {
 }
 }; // namespace plush::sine
 
+// TODO: use a pre-gen random table to avoid rng shenanigans?
 export namespace plush::noise {
 float vol_at(float t) {
   // This was arbitrarily defined to make a noise sound at the same level as
@@ -116,12 +119,13 @@ float vol_at(float t) {
 }
 }; // namespace plush::noise
 
-export namespace plush {
-struct params {
+namespace plush {
+export struct params {
   adsr::params adsr{};
   freq::params freq{};
   arpeggio::params arp{};
 
+  unsigned audio_rate{44100};
   float main_volume{1.0};
 
   float (*wave_fn)(float) = [](float) { return 0.0f; };
@@ -132,4 +136,39 @@ float vol_at(float t, const params &p) {
   float tt = t * freq::at(t, p.freq) / arpeggio::at(t, p.arp);
   return p.wave_fn(tt) * adsr::vol_at(t, p.adsr);
 }
+
+// Using a pointer allows a semi-atomic parameter swap
+extern hai::uptr<params> g_params;
+
+void fill_buffer(float *buf, unsigned len) {
+  static constexpr const auto subsample_count = 8;
+  auto subsample_rate = subsample_count * g_params->audio_rate;
+
+  // Using a 8x subsampling generates more pleasing sounds
+  auto idx = g_params->sample_index * subsample_count;
+  for (auto i = 0; i < len; ++i) {
+    float smp{};
+    for (auto is = 0; is < subsample_count; is++, idx++) {
+      auto t = static_cast<float>(idx) / subsample_rate;
+      smp += vol_at(t, *g_params);
+    }
+    *buf++ = g_params->main_volume * smp / static_cast<float>(subsample_count);
+  }
+  g_params->sample_index = idx / subsample_count;
+}
+
+export void play(const params &p) {
+  auto old_rate = g_params->audio_rate;
+
+  g_params.reset(new params{p});
+
+  if (old_rate == 0)
+    siaudio::filler(fill_buffer);
+
+  if (old_rate != p.audio_rate)
+    siaudio::rate(p.audio_rate);
+}
 } // namespace plush
+
+module :private;
+hai::uptr<plush::params> plush::g_params{new params{.audio_rate = 0}};

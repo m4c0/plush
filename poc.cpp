@@ -42,27 +42,6 @@ float arp_limit(float n) {
 }
 } // namespace sfxr
 
-// Using a pointer allows a semi-atomic parameter swap
-static hai::uptr<plush::params> g_p{new plush::params{}};
-
-void fill_buffer(float *buf, unsigned len) {
-  static constexpr const auto subsample_count = 8;
-  static constexpr const auto subsample_rate =
-      subsample_count * sfxr::audio_rate;
-
-  // Using a 8x subsampling generates more pleasing sounds
-  auto idx = g_p->sample_index * subsample_count;
-  for (auto i = 0; i < len; ++i) {
-    float smp{};
-    for (auto is = 0; is < subsample_count; is++, idx++) {
-      auto t = static_cast<float>(idx) / subsample_rate;
-      smp += plush::vol_at(t, *g_p);
-    }
-    *buf++ = g_p->main_volume * smp / static_cast<float>(subsample_count);
-  }
-  g_p->sample_index = idx / subsample_count;
-}
-
 int main() {
   plush::params p{
       .adsr{
@@ -87,18 +66,15 @@ int main() {
 
   rng::seed();
 
-  siaudio::filler(fill_buffer);
-  siaudio::rate(sfxr::audio_rate);
-
   p.wave_fn = plush::sqr::vol_at;
-  g_p.reset(new plush::params{p});
+  plush::play(p);
   sitime::sleep(1);
 
   p.wave_fn = plush::noise::vol_at;
-  g_p.reset(new plush::params{p});
+  plush::play(p);
   sitime::sleep(1);
 
   p.wave_fn = plush::sine::vol_at;
-  g_p.reset(new plush::params{p});
+  plush::play(p);
   sitime::sleep(1);
 }
