@@ -19,12 +19,11 @@ int main() {
           .slide{},
           .delta_slide{},
       },
-      .main_volume = 0.5,
+      .main_volume = 0.1,
   };
 
   rng::seed();
 
-  /*
   p.wave_fn = plush::sqr::vol_at;
   plush::play(p);
   sitime::sleep(1);
@@ -32,9 +31,12 @@ int main() {
   p.wave_fn = plush::noise::vol_at;
   plush::play(p);
   sitime::sleep(1);
-  */
 
   p.wave_fn = plush::sine::vol_at;
+  plush::play(p);
+  sitime::sleep(1);
+
+  p.wave_fn = plush::saw::vol_at;
   plush::play(p);
   sitime::sleep(1);
 }
