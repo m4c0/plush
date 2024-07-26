@@ -55,8 +55,11 @@ export namespace plush::freq {
 // SFXR's "min frequency" cuts the audio off, not respecting the envelope.
 struct params {
   float start_freq{};
+  /// Sound stops when this frequency is reached
   float min_freq{};
+  /// Speed of frequency change (positive increases)
   float slide{};
+  // /Acceleration of frequency change (positive increases)
   float delta_slide{};
 };
 constexpr float at(float t, const params &p) {
@@ -71,11 +74,16 @@ constexpr float at(float t, const params &p) {
 }
 } // namespace plush::freq
 
+/// Roughly speaking, arpeggio is a music concept of playing a note before the
+/// previous one finishes
 export namespace plush::arpeggio {
 constexpr const float null = 1e38;
 
 struct params {
+  /// Instant when the next note plays
   float limit{null}; // "change speed"
+  /// Frequency modification applied to the note. Applies 1/mod to the frequence
+  /// after the limit is reached
   float mod{};       // "change amount"
 };
 constexpr float at(float t, const params &p) {
