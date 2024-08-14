@@ -3,6 +3,7 @@ module;
 
 export module plush;
 import hai;
+import jup;
 import rng;
 import siaudio;
 
@@ -142,7 +143,6 @@ export struct params {
   arpeggio::params arp{};
   vibrato::params vib{};
 
-  unsigned audio_rate{44100};
   float main_volume{1.0};
 
   float (*wave_fn)(float) = [](float) { return 0.0f; };
@@ -160,7 +160,7 @@ extern hai::uptr<params> g_params;
 
 void fill_buffer(float *buf, unsigned len) {
   static constexpr const auto subsample_count = 8;
-  auto subsample_rate = subsample_count * g_params->audio_rate;
+  auto subsample_rate = subsample_count * jup::rate;
 
   // Using a 8x subsampling generates more pleasing sounds
   auto idx = g_params->sample_index * subsample_count;
@@ -175,18 +175,15 @@ void fill_buffer(float *buf, unsigned len) {
   g_params->sample_index = idx / subsample_count;
 }
 
+extern hai::array<float> g_buffer;
 export void play(const params &p) {
-  auto old_rate = g_params->audio_rate;
-
   g_params.reset(new params{p});
 
-  if (old_rate == 0)
-    siaudio::filler(fill_buffer);
-
-  if (old_rate != p.audio_rate)
-    siaudio::rate(p.audio_rate);
+  fill_buffer(g_buffer.begin(), g_buffer.size());
+  jup::play(g_buffer.begin(), g_buffer.size());
 }
 } // namespace plush
 
 module :private;
-hai::uptr<plush::params> plush::g_params{new params{.audio_rate = 0}};
+hai::uptr<plush::params> plush::g_params{new params{}};
+hai::array<float> plush::g_buffer{jup::rate * 2};
